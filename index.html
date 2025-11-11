@@ -6,6 +6,7 @@
     <title>GPX2Strava - Create Custom Running Routes</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.css" />
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,35 +16,114 @@
             <p class="subtitle">Create custom running routes and export as GPX files</p>
         </header>
 
-        <div class="controls">
-            <div class="control-group">
-                <button id="drawBtn" class="btn btn-primary">Draw Route</button>
-                <button id="clearBtn" class="btn btn-secondary">Clear Route</button>
-                <button id="exportBtn" class="btn btn-success" disabled>Export GPX</button>
+        <div class="main-content">
+            <div class="map-section">
+                <div class="map-controls">
+                    <div id="searchContainer" class="search-container">
+                        <input type="text" id="locationSearch" placeholder="Search for a location..." />
+                    </div>
+                    <div class="shape-selector">
+                        <button class="shape-btn active" data-shape="draw" id="drawBtn">Draw</button>
+                        <button class="shape-btn" data-shape="heart" id="heartBtn">Heart</button>
+                        <button class="shape-btn" data-shape="circle" id="circleBtn">Circle</button>
+                    </div>
+                    <div class="map-options">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showWaypoints" checked>
+                            <span>Show Waypoints</span>
+                        </label>
+                        <button id="clearBtn" class="btn btn-secondary btn-small">Clear</button>
+                    </div>
+                </div>
+                <div id="map"></div>
             </div>
-            <div class="info-panel">
-                <p id="routeInfo">Draw a route on the map to get started</p>
+
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <h3>Data Visualization</h3>
+                    <div class="chart-container">
+                        <h4>Pace Profile</h4>
+                        <canvas id="paceChart"></canvas>
+                        <p class="chart-info" id="paceInfo">Average: 5.50 min/km</p>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Elevation Profile</h4>
+                        <canvas id="elevationChart"></canvas>
+                        <p class="chart-info" id="elevationInfo">Total Gain: 0m</p>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Run Details</h3>
+                    <div class="activity-toggle">
+                        <button class="toggle-btn active" data-activity="run">Run</button>
+                        <button class="toggle-btn" data-activity="bike">Bike</button>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="distance">0</div>
+                            <div class="stat-label">Distance (km)</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="duration">0:00</div>
+                            <div class="stat-label">Duration</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="elevationGain">0m</div>
+                            <div class="stat-label">Elevation Gain</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Average Pace (min/km)</label>
+                        <input type="number" id="paceInput" value="5.50" step="0.1" min="3" max="15">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Pace Inconsistency (%)</label>
+                        <input type="range" id="paceInconsistency" min="0" max="30" value="0">
+                        <span id="paceInconsistencyValue">0%</span>
+                        <p class="help-text">Constant pace throughout the run (most efficient)</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="includeHeartRate">
+                            Include Heart Rate Data
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Run Name</label>
+                        <input type="text" id="runName" placeholder="My Running Route">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="runDate">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Start Time</label>
+                        <input type="time" id="startTime">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="description" rows="3" placeholder="Add a description..."></textarea>
+                    </div>
+
+                    <button id="exportBtn" class="btn btn-success btn-block" disabled>Download GPX File</button>
+                </div>
             </div>
-        </div>
-
-        <div id="map"></div>
-
-        <div class="instructions">
-            <h2>How to Use</h2>
-            <ol>
-                <li>Click "Draw Route" button to activate drawing mode</li>
-                <li>Click on the map to create waypoints for your route</li>
-                <li>Continue clicking to add more points to your route</li>
-                <li>Double-click on the last point to finish drawing</li>
-                <li>Click "Export GPX" to download your route file</li>
-                <li>Upload the GPX file to Strava or your preferred fitness app</li>
-            </ol>
-            <p><strong>Tip:</strong> You can also use the drawing toolbar that appears on the map (the line icon) to start drawing.</p>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
