@@ -241,7 +241,7 @@ function updateRouteInfo(layer) {
             }
             
             // Calculate duration from speed: time = distance / speed
-            durationHours = distance / speedInKmh;
+            const durationHours = distance / speedInKmh;
             durationMinutes = durationHours * 60;
             durationSeconds = durationMinutes * 60;
             
@@ -634,6 +634,10 @@ document.getElementById('paceInconsistency').addEventListener('input', function(
 document.getElementById('runDate').valueAsDate = new Date();
 const now = new Date();
 document.getElementById('startTime').value = now.toTimeString().slice(0, 5);
+
+// Initialize heart rate controls on page load
+updateHeartRateControls();
+updateHeartRateHelpText(150);
 
 // Generate GPX file content
 function generateGPX(layer) {
