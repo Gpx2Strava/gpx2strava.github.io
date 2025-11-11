@@ -319,6 +319,16 @@ function updateRouteInfo(layer) {
         document.getElementById('duration').textContent = duration;
         document.getElementById('elevationGain').textContent = Math.round(elevationGain) + 'm';
         
+        // Update heart rate stat if enabled
+        const includeHR = document.getElementById('includeHeartRate').checked;
+        if (includeHR) {
+            const avgHeartRate = parseInt(document.getElementById('heartRateSlider').value) || 150;
+            document.getElementById('heartRateStat').textContent = avgHeartRate + ' bpm';
+            document.getElementById('heartRateStatItem').style.display = 'flex';
+        } else {
+            document.getElementById('heartRateStatItem').style.display = 'none';
+        }
+        
         if (document.getElementById('showWaypoints').checked) {
             showWaypoints();
         }
@@ -393,6 +403,8 @@ function clearCharts() {
     document.getElementById('elevationGain').textContent = '0m';
     document.getElementById('pace').textContent = '5.50';
     document.getElementById('speed').textContent = '0 km/h';
+    document.getElementById('heartRateStat').textContent = '0 bpm';
+    document.getElementById('heartRateStatItem').style.display = 'none';
     
     // Reset route stats
     routeStats = {
@@ -495,6 +507,11 @@ function updateHeartRateControls() {
 // Heart rate checkbox
 document.getElementById('includeHeartRate').addEventListener('change', function() {
     updateHeartRateControls();
+    // Show/hide heart rate stat
+    document.getElementById('heartRateStatItem').style.display = this.checked ? 'flex' : 'none';
+    if (currentRoute && this.checked) {
+        updateRouteInfo(currentRoute);
+    }
 });
 
 // Heart rate slider
@@ -502,6 +519,10 @@ document.getElementById('heartRateSlider').addEventListener('input', function() 
     const value = parseInt(this.value);
     document.getElementById('heartRateValue').textContent = value;
     updateHeartRateHelpText(value);
+    // Update heart rate stat if route exists
+    if (currentRoute && document.getElementById('includeHeartRate').checked) {
+        updateRouteInfo(currentRoute);
+    }
 });
 
 function updateHeartRateHelpText(hr) {
@@ -515,13 +536,32 @@ function updateHeartRateHelpText(hr) {
     } else if (hr < 180) {
         helpText.textContent = 'High intensity, vigorous effort';
     } else {
-        helpText.textContent = 'Very high intensity, maximum effort';
+        helpText.textContent = 'Maximum intensity, very hard effort';
+    }
+}
+
+// Update heart rate variability help text
+function updateHeartRateVariabilityHelpText(variability) {
+    const helpText = document.querySelector('#heartRateVariabilityGroup .help-text');
+    if (variability === 0) {
+        helpText.textContent = 'Constant heart rate (steady effort)';
+    } else if (variability < 10) {
+        helpText.textContent = 'Low heart rate variability (consistent effort)';
+    } else if (variability < 20) {
+        helpText.textContent = 'Moderate heart rate changes (realistic for varied terrain)';
+    } else {
+        helpText.textContent = 'High heart rate variability (intervals or challenging terrain)';
     }
 }
 
 // Heart rate variability slider
 document.getElementById('heartRateVariability').addEventListener('input', function() {
-    document.getElementById('heartRateVariabilityValue').textContent = this.value + '%';
+    const value = parseInt(this.value);
+    document.getElementById('heartRateVariabilityValue').textContent = value + '%';
+    updateHeartRateVariabilityHelpText(value);
+    if (currentRoute && document.getElementById('includeHeartRate').checked) {
+        updateRouteInfo(currentRoute);
+    }
 });
 
 // Speed unit change
@@ -638,6 +678,7 @@ document.getElementById('startTime').value = now.toTimeString().slice(0, 5);
 // Initialize heart rate controls on page load
 updateHeartRateControls();
 updateHeartRateHelpText(150);
+updateHeartRateVariabilityHelpText(10);
 
 // Generate GPX file content
 function generateGPX(layer) {
