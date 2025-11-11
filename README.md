@@ -1,4 +1,4 @@
-# FakeMyRun
+# GPX2Strava
 
 A free, open-source tool to create custom running routes and export them as GPX files for Strava and other fitness apps.
 
