@@ -35,7 +35,7 @@ function initDrawControl() {
         draw: {
             polyline: {
                 shapeOptions: {
-                    color: '#667eea',
+                    color: '#2563eb',
                     weight: 5
                 },
                 metric: true,
@@ -217,7 +217,7 @@ function createHeartShape() {
         points.push([center.lat + y * radius * 0.1, center.lng + x * radius]);
     }
     
-    const polyline = L.polyline(points, { color: '#667eea', weight: 5 });
+    const polyline = L.polyline(points, { color: '#2563eb', weight: 5 });
     drawnItems.clearLayers();
     drawnItems.addLayer(polyline);
     currentRoute = polyline;
@@ -241,7 +241,7 @@ function createCircleShape() {
         points.push([lat, lng]);
     }
     
-    const polyline = L.polyline(points, { color: '#667eea', weight: 5 });
+    const polyline = L.polyline(points, { color: '#2563eb', weight: 5 });
     drawnItems.clearLayers();
     drawnItems.addLayer(polyline);
     currentRoute = polyline;
@@ -643,7 +643,7 @@ async function snapToRoad() {
             drawnItems.removeLayer(currentRoute);
             
             // Create new snapped route
-            const snappedRoute = L.polyline(snappedCoordinates, { color: '#667eea', weight: 5 });
+            const snappedRoute = L.polyline(snappedCoordinates, { color: '#2563eb', weight: 5 });
             drawnItems.addLayer(snappedRoute);
             currentRoute = snappedRoute;
             
@@ -662,7 +662,7 @@ async function snapToRoad() {
         alert('Error snapping route to roads. Please try again.');
     } finally {
         snapBtn.disabled = false;
-        snapBtn.innerHTML = '<span class="btn-icon">📍</span> Align Path to Road';
+        snapBtn.innerHTML = '<span class="btn-icon">🛣️</span> Align Path to Road';
     }
 }
 

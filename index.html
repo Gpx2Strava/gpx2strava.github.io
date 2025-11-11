@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPX2Strava - Create Custom Running Routes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder@1.13.0/dist/Control.Geocoder.css" />
@@ -32,10 +35,12 @@
                             <input type="checkbox" id="showWaypoints" checked>
                             <span>Show Waypoints</span>
                         </label>
-                        <button id="snapToRoadBtn" class="btn btn-warning btn-small" disabled>
-                            <span class="btn-icon">📍</span> Align Path to Road
-                        </button>
-                        <button id="clearBtn" class="btn btn-secondary btn-small">Clear</button>
+                        <div class="map-actions">
+                            <button id="snapToRoadBtn" class="btn btn-warning" disabled>
+                                <span class="btn-icon">🛣️</span> Align Path to Road
+                            </button>
+                            <button id="clearBtn" class="btn btn-secondary">Clear</button>
+                        </div>
                     </div>
                 </div>
                 <div id="map"></div>
