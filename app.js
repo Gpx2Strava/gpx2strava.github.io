@@ -28,6 +28,14 @@ let currentActivityType = 'run';
 let paceChart = null;
 let elevationChart = null;
 let waypointMarkers = [];
+let routeStats = {
+    distance: 0,
+    duration: 0,
+    pace: 0,
+    speed: 0,
+    elevationGain: 0,
+    elevations: []
+};
 
 // Initialize draw control (always visible)
 function initDrawControl() {
@@ -284,22 +292,30 @@ function updateRouteInfo(layer) {
         const latlngs = layer.getLatLngs();
         const distance = calculateDistance(latlngs);
         const paceUnit = document.getElementById('paceUnit').value;
-        let pace = parseFloat(document.getElementById('paceInput').value) || 5.5;
+        let paceInput = parseFloat(document.getElementById('paceInput').value) || 5.5;
         
-        // Convert pace if needed
+        // Convert pace to min/km for calculations (always work in metric)
+        let paceInMinPerKm = paceInput;
         if (paceUnit === 'min/mile') {
-            pace = pace * 1.60934; // Convert to min/km for calculations
+            paceInMinPerKm = paceInput * 1.60934; // Convert to min/km
         }
         
-        const durationMinutes = distance * pace;
+        // Store actual calculated values
+        const durationMinutes = distance * paceInMinPerKm;
+        const durationSeconds = durationMinutes * 60;
         const hours = Math.floor(durationMinutes / 60);
         const minutes = Math.floor(durationMinutes % 60);
         const seconds = Math.floor((durationMinutes % 1) * 60);
         const duration = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         
+        // Generate and store elevations (consistent across calls)
+        if (routeStats.elevations.length !== latlngs.length) {
+            routeStats.elevations = generateElevations(latlngs.length);
+        }
+        const elevations = routeStats.elevations;
+        
         // Calculate elevation gain
         let elevationGain = 0;
-        const elevations = generateElevations(latlngs.length);
         for (let i = 1; i < elevations.length; i++) {
             if (elevations[i] > elevations[i-1]) {
                 elevationGain += elevations[i] - elevations[i-1];
@@ -309,12 +325,19 @@ function updateRouteInfo(layer) {
         // Calculate speed (km/h)
         const speed = distance > 0 ? (distance / (durationMinutes / 60)) : 0;
         
+        // Store stats for GPX generation
+        routeStats.distance = distance;
+        routeStats.duration = durationSeconds; // Store in seconds
+        routeStats.pace = paceInMinPerKm; // Store in min/km
+        routeStats.speed = speed;
+        routeStats.elevationGain = elevationGain;
+        
         // Display distance with unit
         const distanceUnit = paceUnit === 'min/mile' ? 'mi' : 'km';
         const distanceValue = paceUnit === 'min/mile' ? (distance * 0.621371).toFixed(2) : distance.toFixed(2);
         
         // Display pace
-        const displayPace = paceUnit === 'min/mile' ? (pace / 1.60934).toFixed(2) : pace.toFixed(2);
+        const displayPace = paceUnit === 'min/mile' ? (paceInMinPerKm / 1.60934).toFixed(2) : paceInMinPerKm.toFixed(2);
         
         document.getElementById('distance').textContent = distanceValue + ' ' + distanceUnit;
         document.getElementById('duration').textContent = duration;
@@ -396,6 +419,16 @@ function clearCharts() {
     document.getElementById('elevationGain').textContent = '0m';
     document.getElementById('pace').textContent = '5.50';
     document.getElementById('speed').textContent = '0 km/h';
+    
+    // Reset route stats
+    routeStats = {
+        distance: 0,
+        duration: 0,
+        pace: 0,
+        speed: 0,
+        elevationGain: 0,
+        elevations: []
+    };
 }
 
 // Generate elevation data
@@ -505,15 +538,19 @@ function generateGPX(layer) {
     const startDateTime = new Date(runDate + 'T' + startTime);
     const timestamp = startDateTime.toISOString();
     
-    // Calculate total distance for realistic timing
-    const totalDistance = calculateDistance(latlngs);
-    const averagePace = parseFloat(document.getElementById('paceInput').value) || 5.0;
+    // Use stored stats to ensure consistency
+    const totalDistance = routeStats.distance || calculateDistance(latlngs);
+    const totalDurationSeconds = routeStats.duration || (totalDistance * (parseFloat(document.getElementById('paceInput').value) || 5.5) * 60);
+    const averagePaceInMinPerKm = routeStats.pace || (parseFloat(document.getElementById('paceInput').value) || 5.5);
     const inconsistency = parseFloat(document.getElementById('paceInconsistency').value) || 0;
-    const totalTimeMinutes = totalDistance * averagePace;
-    const timePerPoint = totalTimeMinutes / latlngs.length;
     
-    // Generate elevations
-    const elevations = generateElevations(latlngs.length);
+    // Use stored elevations or generate if not available
+    const elevations = routeStats.elevations.length === latlngs.length 
+        ? routeStats.elevations 
+        : generateElevations(latlngs.length);
+    
+    // Calculate time per point (in seconds)
+    const timePerPointSeconds = totalDurationSeconds / latlngs.length;
     
     let gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="GPX2Strava" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
@@ -530,11 +567,21 @@ function generateGPX(layer) {
 
     latlngs.forEach((latlng, index) => {
         // Create timestamps with pace variation
-        const paceVariation = (Math.random() - 0.5) * inconsistency * 0.1;
-        const adjustedPace = averagePace + paceVariation;
-        const adjustedTimePerPoint = (totalDistance / latlngs.length) * adjustedPace;
-        const timeOffset = index * adjustedTimePerPoint * 60 * 1000;
-        const pointTime = new Date(startDateTime.getTime() + timeOffset);
+        const paceVariation = inconsistency > 0 ? (Math.random() - 0.5) * inconsistency * 0.1 : 0;
+        const adjustedPace = averagePaceInMinPerKm + paceVariation;
+        const segmentDistance = index === 0 ? 0 : latlngs[index-1].distanceTo(latlng) / 1000; // km
+        const segmentTimeSeconds = segmentDistance * adjustedPace * 60;
+        
+        // Calculate cumulative time offset
+        let cumulativeTime = 0;
+        for (let i = 0; i < index; i++) {
+            const segDist = i === 0 ? 0 : latlngs[i-1].distanceTo(latlngs[i]) / 1000;
+            const segPaceVar = inconsistency > 0 ? (Math.random() - 0.5) * inconsistency * 0.1 : 0;
+            const segPace = averagePaceInMinPerKm + segPaceVar;
+            cumulativeTime += segDist * segPace * 60;
+        }
+        
+        const pointTime = new Date(startDateTime.getTime() + cumulativeTime * 1000);
         
         gpx += `      <trkpt lat="${latlng.lat}" lon="${latlng.lng}">
         <ele>${elevations[index].toFixed(2)}</ele>
