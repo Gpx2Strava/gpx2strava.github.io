@@ -12,8 +12,39 @@ let drawnItems = new L.FeatureGroup();
 map.addLayer(drawnItems);
 
 let drawControl = null;
+let drawHandler = null;
 let isDrawing = false;
 let currentRoute = null;
+
+// Initialize draw control (always visible)
+function initDrawControl() {
+    drawControl = new L.Control.Draw({
+        draw: {
+            polyline: {
+                shapeOptions: {
+                    color: '#667eea',
+                    weight: 5
+                },
+                metric: true,
+                showLength: true,
+                repeatMode: false
+            },
+            polygon: false,
+            circle: false,
+            rectangle: false,
+            marker: false,
+            circlemarker: false
+        },
+        edit: {
+            featureGroup: drawnItems,
+            remove: true
+        }
+    });
+    map.addControl(drawControl);
+}
+
+// Initialize draw control
+initDrawControl();
 
 // Handle draw events
 map.on(L.Draw.Event.CREATED, function (e) {
@@ -25,12 +56,6 @@ map.on(L.Draw.Event.CREATED, function (e) {
     document.getElementById('exportBtn').disabled = false;
     isDrawing = false;
     document.getElementById('drawBtn').textContent = 'Draw Route';
-    
-    // Remove draw control after route is created
-    if (drawControl) {
-        map.removeControl(drawControl);
-        drawControl = null;
-    }
 });
 
 map.on(L.Draw.Event.DELETED, function (e) {
@@ -41,10 +66,21 @@ map.on(L.Draw.Event.DELETED, function (e) {
 
 map.on(L.Draw.Event.DRAWSTART, function (e) {
     isDrawing = true;
+    document.getElementById('drawBtn').textContent = 'Drawing... Double-click to finish';
 });
 
 map.on(L.Draw.Event.DRAWSTOP, function (e) {
     isDrawing = false;
+    if (drawHandler) {
+        drawHandler.disable();
+        drawHandler = null;
+    }
+    document.getElementById('drawBtn').textContent = 'Draw Route';
+});
+
+map.on(L.Draw.Event.DRAWVERTEX, function (e) {
+    // Update button text while drawing
+    document.getElementById('drawBtn').textContent = 'Drawing... Double-click to finish';
 });
 
 // Update route information
@@ -151,45 +187,25 @@ function exportGPX() {
 
 // Button event listeners
 document.getElementById('drawBtn').addEventListener('click', function() {
-    // Remove existing draw control
-    if (drawControl) {
-        map.removeControl(drawControl);
+    if (isDrawing) {
+        // Cancel drawing if already in progress
+        if (drawHandler) {
+            drawHandler.disable();
+            drawHandler = null;
+        }
+        isDrawing = false;
+        this.textContent = 'Draw Route';
+    } else {
+        // Enable drawing mode
+        if (drawControl && drawControl._toolbars && drawControl._toolbars.draw) {
+            drawHandler = drawControl._toolbars.draw._modes.polyline.handler;
+            drawHandler.enable();
+            isDrawing = true;
+            this.textContent = 'Click map to draw route';
+        } else {
+            alert('Drawing tool not ready. Please wait a moment and try again.');
+        }
     }
-    
-    // Create new draw control and enable polyline drawing
-    drawControl = new L.Control.Draw({
-        draw: {
-            polyline: {
-                shapeOptions: {
-                    color: '#667eea',
-                    weight: 5
-                },
-                metric: true,
-                showLength: true
-            },
-            polygon: false,
-            circle: false,
-            rectangle: false,
-            marker: false,
-            circlemarker: false
-        },
-        edit: {
-            featureGroup: drawnItems,
-            remove: true
-        }
-    });
-    
-    map.addControl(drawControl);
-    
-    // Enable polyline drawing immediately
-    setTimeout(() => {
-        if (drawControl._toolbars && drawControl._toolbars.draw) {
-            drawControl._toolbars.draw._modes.polyline.handler.enable();
-        }
-    }, 100);
-    
-    isDrawing = true;
-    this.textContent = 'Drawing... Click map to draw';
 });
 
 document.getElementById('clearBtn').addEventListener('click', function() {
