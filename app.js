@@ -134,6 +134,7 @@ map.on(L.Draw.Event.CREATED, function (e) {
     updateRouteInfo(layer);
     updateCharts(layer);
     document.getElementById('exportBtn').disabled = false;
+    document.getElementById('snapToRoadBtn').disabled = false;
     isDrawing = false;
     updateShapeButtons('draw');
 });
@@ -141,6 +142,7 @@ map.on(L.Draw.Event.CREATED, function (e) {
 map.on(L.Draw.Event.DELETED, function (e) {
     currentRoute = null;
     document.getElementById('exportBtn').disabled = true;
+    document.getElementById('snapToRoadBtn').disabled = true;
     clearCharts();
     clearWaypoints();
 });
@@ -222,6 +224,7 @@ function createHeartShape() {
     updateRouteInfo(polyline);
     updateCharts(polyline);
     document.getElementById('exportBtn').disabled = false;
+    document.getElementById('snapToRoadBtn').disabled = false;
     map.fitBounds(polyline.getBounds());
 }
 
@@ -245,6 +248,7 @@ function createCircleShape() {
     updateRouteInfo(polyline);
     updateCharts(polyline);
     document.getElementById('exportBtn').disabled = false;
+    document.getElementById('snapToRoadBtn').disabled = false;
     map.fitBounds(polyline.getBounds());
 }
 
@@ -279,11 +283,19 @@ function updateRouteInfo(layer) {
     if (layer instanceof L.Polyline) {
         const latlngs = layer.getLatLngs();
         const distance = calculateDistance(latlngs);
-        const pace = parseFloat(document.getElementById('paceInput').value) || 5.5;
+        const paceUnit = document.getElementById('paceUnit').value;
+        let pace = parseFloat(document.getElementById('paceInput').value) || 5.5;
+        
+        // Convert pace if needed
+        if (paceUnit === 'min/mile') {
+            pace = pace * 1.60934; // Convert to min/km for calculations
+        }
+        
         const durationMinutes = distance * pace;
         const hours = Math.floor(durationMinutes / 60);
         const minutes = Math.floor(durationMinutes % 60);
-        const duration = `${hours}:${minutes.toString().padStart(2, '0')}`;
+        const seconds = Math.floor((durationMinutes % 1) * 60);
+        const duration = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         
         // Calculate elevation gain
         let elevationGain = 0;
@@ -294,9 +306,21 @@ function updateRouteInfo(layer) {
             }
         }
         
-        document.getElementById('distance').textContent = distance.toFixed(2);
+        // Calculate speed (km/h)
+        const speed = distance > 0 ? (distance / (durationMinutes / 60)) : 0;
+        
+        // Display distance with unit
+        const distanceUnit = paceUnit === 'min/mile' ? 'mi' : 'km';
+        const distanceValue = paceUnit === 'min/mile' ? (distance * 0.621371).toFixed(2) : distance.toFixed(2);
+        
+        // Display pace
+        const displayPace = paceUnit === 'min/mile' ? (pace / 1.60934).toFixed(2) : pace.toFixed(2);
+        
+        document.getElementById('distance').textContent = distanceValue + ' ' + distanceUnit;
         document.getElementById('duration').textContent = duration;
         document.getElementById('elevationGain').textContent = Math.round(elevationGain) + 'm';
+        document.getElementById('pace').textContent = displayPace;
+        document.getElementById('speed').textContent = speed.toFixed(1) + ' km/h';
         
         if (document.getElementById('showWaypoints').checked) {
             showWaypoints();
@@ -367,9 +391,11 @@ function clearCharts() {
     
     document.getElementById('paceInfo').textContent = 'Average: 5.50 min/km';
     document.getElementById('elevationInfo').textContent = 'Total Gain: 0m';
-    document.getElementById('distance').textContent = '0';
-    document.getElementById('duration').textContent = '0:00';
+    document.getElementById('distance').textContent = '0 km';
+    document.getElementById('duration').textContent = '0:00:00';
     document.getElementById('elevationGain').textContent = '0m';
+    document.getElementById('pace').textContent = '5.50';
+    document.getElementById('speed').textContent = '0 km/h';
 }
 
 // Generate elevation data
@@ -401,18 +427,58 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
     });
 });
 
-// Pace inconsistency slider
-document.getElementById('paceInconsistency').addEventListener('input', function() {
-    document.getElementById('paceInconsistencyValue').textContent = this.value + '%';
+// Pace unit change
+document.getElementById('paceUnit').addEventListener('change', function() {
+    const paceUnit = this.value;
+    document.getElementById('paceUnitLabel').textContent = paceUnit;
+    
+    let pace = parseFloat(document.getElementById('paceInput').value) || 5.5;
+    
+    // Convert pace
+    if (paceUnit === 'min/mile') {
+        pace = pace * 1.60934; // Convert to min/km
+    } else {
+        pace = pace / 1.60934; // Convert to min/mile
+    }
+    
+    document.getElementById('paceInput').value = pace.toFixed(2);
+    document.getElementById('paceSlider').value = pace.toFixed(2);
+    document.getElementById('paceValue').textContent = pace.toFixed(2);
+    
     if (currentRoute) {
+        updateRouteInfo(currentRoute);
+        updateCharts(currentRoute);
+    }
+});
+
+// Pace slider
+document.getElementById('paceSlider').addEventListener('input', function() {
+    const value = parseFloat(this.value);
+    document.getElementById('paceValue').textContent = value.toFixed(2);
+    document.getElementById('paceInput').value = value.toFixed(2);
+    
+    if (currentRoute) {
+        updateRouteInfo(currentRoute);
         updateCharts(currentRoute);
     }
 });
 
 // Pace input change
-document.getElementById('paceInput').addEventListener('change', function() {
+document.getElementById('paceInput').addEventListener('input', function() {
+    const value = parseFloat(this.value) || 5.5;
+    document.getElementById('paceSlider').value = value;
+    document.getElementById('paceValue').textContent = value.toFixed(2);
+    
     if (currentRoute) {
         updateRouteInfo(currentRoute);
+        updateCharts(currentRoute);
+    }
+});
+
+// Pace inconsistency slider
+document.getElementById('paceInconsistency').addEventListener('input', function() {
+    document.getElementById('paceInconsistencyValue').textContent = this.value + '%';
+    if (currentRoute) {
         updateCharts(currentRoute);
     }
 });
@@ -543,11 +609,71 @@ document.getElementById('drawBtn').addEventListener('click', function() {
     }
 });
 
+// Snap to road functionality
+async function snapToRoad() {
+    if (!currentRoute || !(currentRoute instanceof L.Polyline)) {
+        alert('Please draw a route first!');
+        return;
+    }
+    
+    const latlngs = currentRoute.getLatLngs();
+    if (latlngs.length < 2) {
+        alert('Route needs at least 2 points to snap to roads');
+        return;
+    }
+    
+    const snapBtn = document.getElementById('snapToRoadBtn');
+    snapBtn.disabled = true;
+    snapBtn.innerHTML = '<span class="btn-icon">⏳</span> Snapping...';
+    
+    try {
+        // Use OSRM routing service
+        const profile = currentActivityType === 'bike' ? 'cycling' : 'foot';
+        const coordinates = latlngs.map(ll => `${ll.lng},${ll.lat}`).join(';');
+        const url = `https://router.project-osrm.org/route/v1/${profile}/${coordinates}?overview=full&geometries=geojson`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+            const route = data.routes[0];
+            const snappedCoordinates = route.geometry.coordinates.map(coord => [coord[1], coord[0]]); // Convert [lng, lat] to [lat, lng]
+            
+            // Remove old route
+            drawnItems.removeLayer(currentRoute);
+            
+            // Create new snapped route
+            const snappedRoute = L.polyline(snappedCoordinates, { color: '#667eea', weight: 5 });
+            drawnItems.addLayer(snappedRoute);
+            currentRoute = snappedRoute;
+            
+            updateRouteInfo(snappedRoute);
+            updateCharts(snappedRoute);
+            map.fitBounds(snappedRoute.getBounds());
+            
+            if (document.getElementById('showWaypoints').checked) {
+                showWaypoints();
+            }
+        } else {
+            alert('Could not snap route to roads. Please try again or draw a different route.');
+        }
+    } catch (error) {
+        console.error('Error snapping to road:', error);
+        alert('Error snapping route to roads. Please try again.');
+    } finally {
+        snapBtn.disabled = false;
+        snapBtn.innerHTML = '<span class="btn-icon">📍</span> Align Path to Road';
+    }
+}
+
+document.getElementById('snapToRoadBtn').addEventListener('click', snapToRoad);
+
 document.getElementById('clearBtn').addEventListener('click', function() {
     if (confirm('Are you sure you want to clear the route?')) {
         drawnItems.clearLayers();
         currentRoute = null;
         document.getElementById('exportBtn').disabled = true;
+        document.getElementById('snapToRoadBtn').disabled = true;
         clearCharts();
         clearWaypoints();
     }

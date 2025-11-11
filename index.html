@@ -32,6 +32,9 @@
                             <input type="checkbox" id="showWaypoints" checked>
                             <span>Show Waypoints</span>
                         </label>
+                        <button id="snapToRoadBtn" class="btn btn-warning btn-small" disabled>
+                            <span class="btn-icon">📍</span> Align Path to Road
+                        </button>
                         <button id="clearBtn" class="btn btn-secondary btn-small">Clear</button>
                     </div>
                 </div>
@@ -54,43 +57,89 @@
                 </div>
 
                 <div class="sidebar-section">
-                    <h3>Run Details</h3>
-                    <div class="activity-toggle">
-                        <button class="toggle-btn active" data-activity="run">Run</button>
-                        <button class="toggle-btn" data-activity="bike">Bike</button>
+                    <div class="section-header">
+                        <h3>Run Details</h3>
+                        <div class="activity-toggle">
+                            <button class="toggle-btn active" data-activity="run">Run</button>
+                            <button class="toggle-btn" data-activity="bike">Bike</button>
+                        </div>
                     </div>
 
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <div class="stat-value" id="distance">0</div>
-                            <div class="stat-label">Distance (km)</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value" id="duration">0:00</div>
-                            <div class="stat-label">Duration</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-value" id="elevationGain">0m</div>
-                            <div class="stat-label">Elevation Gain</div>
+                    <div class="run-stats">
+                        <h4>Run Stats</h4>
+                        <div class="stats-grid-enhanced">
+                            <div class="stat-item-enhanced">
+                                <div class="stat-icon">📏</div>
+                                <div class="stat-content">
+                                    <div class="stat-value" id="distance">0</div>
+                                    <div class="stat-label">Distance</div>
+                                </div>
+                            </div>
+                            <div class="stat-item-enhanced">
+                                <div class="stat-icon">⏱️</div>
+                                <div class="stat-content">
+                                    <div class="stat-value" id="duration">0:00</div>
+                                    <div class="stat-label">Duration</div>
+                                </div>
+                            </div>
+                            <div class="stat-item-enhanced">
+                                <div class="stat-icon">⛰️</div>
+                                <div class="stat-content">
+                                    <div class="stat-value" id="elevationGain">0m</div>
+                                    <div class="stat-label">Elevation Gain</div>
+                                </div>
+                            </div>
+                            <div class="stat-item-enhanced">
+                                <div class="stat-icon">🏃</div>
+                                <div class="stat-content">
+                                    <div class="stat-value" id="pace">5.50</div>
+                                    <div class="stat-label">Pace</div>
+                                </div>
+                            </div>
+                            <div class="stat-item-enhanced">
+                                <div class="stat-icon">⚡</div>
+                                <div class="stat-content">
+                                    <div class="stat-value" id="speed">0</div>
+                                    <div class="stat-label">Speed</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>Average Pace (min/km)</label>
-                        <input type="number" id="paceInput" value="5.50" step="0.1" min="3" max="15">
+                        <label>Pace Unit</label>
+                        <select id="paceUnit" class="form-select">
+                            <option value="min/km">min/km</option>
+                            <option value="min/mile">min/mile</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
-                        <label>Pace Inconsistency (%)</label>
-                        <input type="range" id="paceInconsistency" min="0" max="30" value="0">
-                        <span id="paceInconsistencyValue">0%</span>
+                        <label>
+                            <span class="label-icon">🏃</span> Average Pace (<span id="paceUnitLabel">min/km</span>)
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="paceSlider" min="3" max="15" step="0.1" value="5.50">
+                            <span class="slider-value" id="paceValue">5.50</span>
+                        </div>
+                        <input type="number" id="paceInput" value="5.50" step="0.1" min="3" max="15" class="pace-input-number">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <span class="label-icon">🔀</span> Pace Inconsistency
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="paceInconsistency" min="0" max="30" value="0">
+                            <span class="slider-value" id="paceInconsistencyValue">0%</span>
+                        </div>
                         <p class="help-text">Constant pace throughout the run (most efficient)</p>
                     </div>
 
                     <div class="form-group">
                         <label>
                             <input type="checkbox" id="includeHeartRate">
-                            Include Heart Rate Data
+                            <span class="label-icon">❤️</span> Include Heart Rate Data
                         </label>
                     </div>
 
