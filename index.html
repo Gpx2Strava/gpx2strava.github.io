@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FakeMyRun - Create Custom Running Routes</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FakeMyRun</h1>
+            <p class="subtitle">Create custom running routes and export as GPX files</p>
+        </header>
+
+        <div class="controls">
+            <div class="control-group">
+                <button id="drawBtn" class="btn btn-primary">Draw Route</button>
+                <button id="clearBtn" class="btn btn-secondary">Clear Route</button>
+                <button id="exportBtn" class="btn btn-success" disabled>Export GPX</button>
+            </div>
+            <div class="info-panel">
+                <p id="routeInfo">Draw a route on the map to get started</p>
+            </div>
+        </div>
+
+        <div id="map"></div>
+
+        <div class="instructions">
+            <h2>How to Use</h2>
+            <ol>
+                <li>Click "Draw Route" to start drawing</li>
+                <li>Click on the map to create waypoints for your route</li>
+                <li>Double-click to finish drawing</li>
+                <li>Click "Export GPX" to download your route file</li>
+                <li>Upload the GPX file to Strava or your preferred fitness app</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+
