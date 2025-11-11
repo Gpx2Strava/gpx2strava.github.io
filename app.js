@@ -188,77 +188,12 @@ document.getElementById('locationSearch').addEventListener('keypress', function(
 // Shape selector buttons
 document.querySelectorAll('.shape-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-        const shape = this.dataset.shape;
-        updateShapeButtons(shape);
-        
-        if (shape === 'draw') {
-            if (drawControl && drawControl._toolbars && drawControl._toolbars.draw) {
-                drawHandler = drawControl._toolbars.draw._modes.polyline.handler;
-                drawHandler.enable();
-            }
-        } else if (shape === 'heart') {
-            createHeartShape();
-        } else if (shape === 'circle') {
-            createCircleShape();
+        if (drawControl && drawControl._toolbars && drawControl._toolbars.draw) {
+            drawHandler = drawControl._toolbars.draw._modes.polyline.handler;
+            drawHandler.enable();
         }
     });
 });
-
-function updateShapeButtons(activeShape) {
-    document.querySelectorAll('.shape-btn').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.shape === activeShape) {
-            btn.classList.add('active');
-        }
-    });
-}
-
-// Create heart shape
-function createHeartShape() {
-    const center = map.getCenter();
-    const points = [];
-    const radius = 0.01; // Adjust size
-    
-    for (let t = 0; t <= 2 * Math.PI; t += 0.1) {
-        const x = 16 * Math.pow(Math.sin(t), 3);
-        const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
-        points.push([center.lat + y * radius * 0.1, center.lng + x * radius]);
-    }
-    
-    const polyline = L.polyline(points, { color: '#2563eb', weight: 5 });
-    drawnItems.clearLayers();
-    drawnItems.addLayer(polyline);
-    currentRoute = polyline;
-    updateRouteInfo(polyline);
-    updateCharts(polyline);
-    document.getElementById('exportBtn').disabled = false;
-    document.getElementById('snapToRoadBtn').disabled = false;
-    map.fitBounds(polyline.getBounds());
-}
-
-// Create circle shape
-function createCircleShape() {
-    const center = map.getCenter();
-    const radius = 0.01; // Adjust size
-    const points = [];
-    
-    for (let i = 0; i <= 360; i += 10) {
-        const angle = (i * Math.PI) / 180;
-        const lat = center.lat + radius * Math.cos(angle);
-        const lng = center.lng + radius * Math.sin(angle);
-        points.push([lat, lng]);
-    }
-    
-    const polyline = L.polyline(points, { color: '#2563eb', weight: 5 });
-    drawnItems.clearLayers();
-    drawnItems.addLayer(polyline);
-    currentRoute = polyline;
-    updateRouteInfo(polyline);
-    updateCharts(polyline);
-    document.getElementById('exportBtn').disabled = false;
-    document.getElementById('snapToRoadBtn').disabled = false;
-    map.fitBounds(polyline.getBounds());
-}
 
 // Show/hide waypoints
 document.getElementById('showWaypoints').addEventListener('change', function() {
@@ -457,6 +392,39 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
         document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
         currentActivityType = this.dataset.activity;
+        
+        // Update pace input range and default value based on activity type
+        const paceInput = document.getElementById('paceInput');
+        const paceSlider = document.getElementById('paceSlider');
+        
+        if (currentActivityType === 'bike') {
+            // Bike: typically 2-5 min/km (12-30 km/h)
+            paceInput.min = '2';
+            paceInput.max = '5';
+            paceSlider.min = '2';
+            paceSlider.max = '5';
+            if (parseFloat(paceInput.value) > 5 || parseFloat(paceInput.value) < 2) {
+                paceInput.value = '3.00';
+                paceSlider.value = '3.00';
+                document.getElementById('paceValue').textContent = '3.00';
+            }
+        } else {
+            // Run: typically 3-15 min/km
+            paceInput.min = '3';
+            paceInput.max = '15';
+            paceSlider.min = '3';
+            paceSlider.max = '15';
+            if (parseFloat(paceInput.value) > 15 || parseFloat(paceInput.value) < 3) {
+                paceInput.value = '5.50';
+                paceSlider.value = '5.50';
+                document.getElementById('paceValue').textContent = '5.50';
+            }
+        }
+        
+        if (currentRoute) {
+            updateRouteInfo(currentRoute);
+            updateCharts(currentRoute);
+        }
     });
 });
 
@@ -565,20 +533,38 @@ function generateGPX(layer) {
     <trkseg>
 `;
 
+    // Pre-calculate segment distances and times for consistency
+    const segmentDistances = [];
+    const segmentTimes = [];
+    let totalCalculatedTime = 0;
+    
+    for (let i = 0; i < latlngs.length; i++) {
+        if (i === 0) {
+            segmentDistances.push(0);
+            segmentTimes.push(0);
+        } else {
+            const segDist = latlngs[i-1].distanceTo(latlngs[i]) / 1000; // km
+            segmentDistances.push(segDist);
+            
+            // Apply pace variation if inconsistency is set
+            const paceVariation = inconsistency > 0 ? (Math.random() - 0.5) * inconsistency * 0.1 : 0;
+            const adjustedPace = averagePaceInMinPerKm + paceVariation;
+            
+            // Time in seconds: distance (km) * pace (min/km) * 60 (sec/min)
+            const segTime = segDist * adjustedPace * 60;
+            segmentTimes.push(segTime);
+            totalCalculatedTime += segTime;
+        }
+    }
+    
+    // Scale times to match total duration if there's a mismatch
+    const timeScale = totalDurationSeconds > 0 ? totalDurationSeconds / totalCalculatedTime : 1;
+    
     latlngs.forEach((latlng, index) => {
-        // Create timestamps with pace variation
-        const paceVariation = inconsistency > 0 ? (Math.random() - 0.5) * inconsistency * 0.1 : 0;
-        const adjustedPace = averagePaceInMinPerKm + paceVariation;
-        const segmentDistance = index === 0 ? 0 : latlngs[index-1].distanceTo(latlng) / 1000; // km
-        const segmentTimeSeconds = segmentDistance * adjustedPace * 60;
-        
-        // Calculate cumulative time offset
+        // Calculate cumulative time
         let cumulativeTime = 0;
         for (let i = 0; i < index; i++) {
-            const segDist = i === 0 ? 0 : latlngs[i-1].distanceTo(latlngs[i]) / 1000;
-            const segPaceVar = inconsistency > 0 ? (Math.random() - 0.5) * inconsistency * 0.1 : 0;
-            const segPace = averagePaceInMinPerKm + segPaceVar;
-            cumulativeTime += segDist * segPace * 60;
+            cumulativeTime += segmentTimes[i] * timeScale;
         }
         
         const pointTime = new Date(startDateTime.getTime() + cumulativeTime * 1000);
