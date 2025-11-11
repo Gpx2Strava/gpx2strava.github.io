@@ -92,15 +92,15 @@
                                     <div class="stat-label">Elevation Gain</div>
                                 </div>
                             </div>
-                            <div class="stat-item-enhanced">
+                            <div class="stat-item-enhanced" id="paceStatItem">
                                 <div class="stat-icon">🏃</div>
                                 <div class="stat-content">
                                     <div class="stat-value" id="pace">5.50</div>
                                     <div class="stat-label">Pace</div>
                                 </div>
                             </div>
-                            <div class="stat-item-enhanced">
-                                <div class="stat-icon">⚡</div>
+                            <div class="stat-item-enhanced" id="speedStatItem" style="display: none;">
+                                <div class="stat-icon">🚴</div>
                                 <div class="stat-content">
                                     <div class="stat-value" id="speed">0</div>
                                     <div class="stat-label">Speed</div>
@@ -109,7 +109,8 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
+                    <!-- Pace/Speed Unit and Input (shown based on activity type) -->
+                    <div class="form-group" id="paceUnitGroup">
                         <label>Pace Unit</label>
                         <select id="paceUnit" class="form-select">
                             <option value="min/km">min/km</option>
@@ -117,7 +118,15 @@
                         </select>
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group" id="speedUnitGroup" style="display: none;">
+                        <label>Speed Unit</label>
+                        <select id="speedUnit" class="form-select">
+                            <option value="km/h">km/h</option>
+                            <option value="mph">mph</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="paceInputGroup">
                         <label>
                             <span class="label-icon">🏃</span> Average Pace (<span id="paceUnitLabel">min/km</span>)
                         </label>
@@ -128,22 +137,55 @@
                         <input type="number" id="paceInput" value="5.50" step="0.1" min="3" max="15" class="pace-input-number">
                     </div>
 
+                    <div class="form-group" id="speedInputGroup" style="display: none;">
+                        <label>
+                            <span class="label-icon">🚴</span> Average Speed (<span id="speedUnitLabel">km/h</span>)
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="speedSlider" min="10" max="40" step="0.5" value="20.00">
+                            <span class="slider-value" id="speedValue">20.00</span>
+                        </div>
+                        <input type="number" id="speedInput" value="20.00" step="0.5" min="10" max="40" class="pace-input-number">
+                    </div>
+
                     <div class="form-group">
                         <label>
-                            <span class="label-icon">🔀</span> Pace Inconsistency
+                            <span class="label-icon">🔀</span> <span id="inconsistencyLabel">Pace</span> Inconsistency
                         </label>
                         <div class="slider-container">
                             <input type="range" id="paceInconsistency" min="0" max="30" value="0">
                             <span class="slider-value" id="paceInconsistencyValue">0%</span>
                         </div>
-                        <p class="help-text">Constant pace throughout the run (most efficient)</p>
+                        <p class="help-text" id="inconsistencyHelpText">Constant pace throughout the run (most efficient)</p>
                     </div>
 
                     <div class="form-group">
                         <label>
-                            <input type="checkbox" id="includeHeartRate">
+                            <input type="checkbox" id="includeHeartRate" checked>
                             <span class="label-icon">❤️</span> Include Heart Rate Data
                         </label>
+                    </div>
+
+                    <div class="form-group" id="heartRateGroup" style="display: none;">
+                        <label>
+                            <span class="label-icon">❤️</span> Average Heart Rate
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="heartRateSlider" min="100" max="200" step="1" value="150">
+                            <span class="slider-value" id="heartRateValue">150</span> <span>bpm</span>
+                        </div>
+                        <p class="help-text" id="heartRateHelpText">Moderate intensity, steady effort</p>
+                    </div>
+
+                    <div class="form-group" id="heartRateVariabilityGroup" style="display: none;">
+                        <label>
+                            <span class="label-icon">⚡</span> Heart Rate Variability
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="heartRateVariability" min="0" max="30" step="1" value="10">
+                            <span class="slider-value" id="heartRateVariabilityValue">10%</span>
+                        </div>
+                        <p class="help-text">Moderate heart rate changes (realistic for varied terrain)</p>
                     </div>
 
                     <div class="form-group">

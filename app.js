@@ -226,18 +226,54 @@ function updateRouteInfo(layer) {
     if (layer instanceof L.Polyline) {
         const latlngs = layer.getLatLngs();
         const distance = calculateDistance(latlngs);
-        const paceUnit = document.getElementById('paceUnit').value;
-        let paceInput = parseFloat(document.getElementById('paceInput').value) || 5.5;
         
-        // Convert pace to min/km for calculations (always work in metric)
-        let paceInMinPerKm = paceInput;
-        if (paceUnit === 'min/mile') {
-            paceInMinPerKm = paceInput * 1.60934; // Convert to min/km
+        let paceInMinPerKm, durationMinutes, durationSeconds;
+        
+        if (currentActivityType === 'bike') {
+            // Bike: use speed
+            const speedUnit = document.getElementById('speedUnit').value;
+            let speedInput = parseFloat(document.getElementById('speedInput').value) || 20;
+            
+            // Convert speed to km/h for calculations
+            let speedInKmh = speedInput;
+            if (speedUnit === 'mph') {
+                speedInKmh = speedInput / 0.621371; // Convert to km/h
+            }
+            
+            // Calculate duration from speed: time = distance / speed
+            durationHours = distance / speedInKmh;
+            durationMinutes = durationHours * 60;
+            durationSeconds = durationMinutes * 60;
+            
+            // Calculate pace from speed: pace (min/km) = 60 / speed (km/h)
+            paceInMinPerKm = 60 / speedInKmh;
+            
+            // Store stats
+            routeStats.speed = speedInKmh;
+            routeStats.pace = paceInMinPerKm;
+        } else {
+            // Run: use pace
+            const paceUnit = document.getElementById('paceUnit').value;
+            let paceInput = parseFloat(document.getElementById('paceInput').value) || 5.5;
+            
+            // Convert pace to min/km for calculations
+            paceInMinPerKm = paceInput;
+            if (paceUnit === 'min/mile') {
+                paceInMinPerKm = paceInput * 1.60934; // Convert to min/km
+            }
+            
+            // Calculate duration from pace
+            durationMinutes = distance * paceInMinPerKm;
+            durationSeconds = durationMinutes * 60;
+            
+            // Calculate speed from pace
+            const speedInKmh = distance > 0 ? (distance / (durationMinutes / 60)) : 0;
+            
+            // Store stats
+            routeStats.pace = paceInMinPerKm;
+            routeStats.speed = speedInKmh;
         }
         
-        // Store actual calculated values
-        const durationMinutes = distance * paceInMinPerKm;
-        const durationSeconds = durationMinutes * 60;
         const hours = Math.floor(durationMinutes / 60);
         const minutes = Math.floor(durationMinutes % 60);
         const seconds = Math.floor((durationMinutes % 1) * 60);
@@ -257,28 +293,31 @@ function updateRouteInfo(layer) {
             }
         }
         
-        // Calculate speed (km/h)
-        const speed = distance > 0 ? (distance / (durationMinutes / 60)) : 0;
-        
         // Store stats for GPX generation
         routeStats.distance = distance;
-        routeStats.duration = durationSeconds; // Store in seconds
-        routeStats.pace = paceInMinPerKm; // Store in min/km
-        routeStats.speed = speed;
+        routeStats.duration = durationSeconds;
         routeStats.elevationGain = elevationGain;
         
-        // Display distance with unit
-        const distanceUnit = paceUnit === 'min/mile' ? 'mi' : 'km';
-        const distanceValue = paceUnit === 'min/mile' ? (distance * 0.621371).toFixed(2) : distance.toFixed(2);
+        // Display stats
+        if (currentActivityType === 'bike') {
+            const speedUnit = document.getElementById('speedUnit').value;
+            const speedValue = speedUnit === 'mph' ? (routeStats.speed * 0.621371).toFixed(2) : routeStats.speed.toFixed(2);
+            document.getElementById('speed').textContent = speedValue + ' ' + speedUnit;
+        } else {
+            const paceUnit = document.getElementById('paceUnit').value;
+            const displayPace = paceUnit === 'min/mile' ? (paceInMinPerKm / 1.60934).toFixed(2) : paceInMinPerKm.toFixed(2);
+            document.getElementById('pace').textContent = displayPace;
+        }
         
-        // Display pace
-        const displayPace = paceUnit === 'min/mile' ? (paceInMinPerKm / 1.60934).toFixed(2) : paceInMinPerKm.toFixed(2);
+        // Common stats
+        const distanceUnit = currentActivityType === 'bike' 
+            ? (document.getElementById('speedUnit').value === 'mph' ? 'mi' : 'km')
+            : (document.getElementById('paceUnit').value === 'min/mile' ? 'mi' : 'km');
+        const distanceValue = distanceUnit === 'mi' ? (distance * 0.621371).toFixed(2) : distance.toFixed(2);
         
         document.getElementById('distance').textContent = distanceValue + ' ' + distanceUnit;
         document.getElementById('duration').textContent = duration;
         document.getElementById('elevationGain').textContent = Math.round(elevationGain) + 'm';
-        document.getElementById('pace').textContent = displayPace;
-        document.getElementById('speed').textContent = speed.toFixed(1) + ' km/h';
         
         if (document.getElementById('showWaypoints').checked) {
             showWaypoints();
@@ -393,23 +432,38 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
         this.classList.add('active');
         currentActivityType = this.dataset.activity;
         
-        // Update pace input range and default value based on activity type
-        const paceInput = document.getElementById('paceInput');
-        const paceSlider = document.getElementById('paceSlider');
-        
         if (currentActivityType === 'bike') {
-            // Bike: typically 2-5 min/km (12-30 km/h)
-            paceInput.min = '2';
-            paceInput.max = '5';
-            paceSlider.min = '2';
-            paceSlider.max = '5';
-            if (parseFloat(paceInput.value) > 5 || parseFloat(paceInput.value) < 2) {
-                paceInput.value = '3.00';
-                paceSlider.value = '3.00';
-                document.getElementById('paceValue').textContent = '3.00';
-            }
+            // Show speed controls, hide pace controls
+            document.getElementById('paceUnitGroup').style.display = 'none';
+            document.getElementById('paceInputGroup').style.display = 'none';
+            document.getElementById('speedUnitGroup').style.display = 'block';
+            document.getElementById('speedInputGroup').style.display = 'block';
+            document.getElementById('paceStatItem').style.display = 'none';
+            document.getElementById('speedStatItem').style.display = 'flex';
+            document.getElementById('inconsistencyLabel').textContent = 'Speed';
+            document.getElementById('inconsistencyHelpText').textContent = 'Constant speed throughout the ride (most efficient)';
+            
+            // Update speed input range (10-40 km/h)
+            const speedInput = document.getElementById('speedInput');
+            const speedSlider = document.getElementById('speedSlider');
+            speedInput.min = '10';
+            speedInput.max = '40';
+            speedSlider.min = '10';
+            speedSlider.max = '40';
         } else {
-            // Run: typically 3-15 min/km
+            // Show pace controls, hide speed controls
+            document.getElementById('paceUnitGroup').style.display = 'block';
+            document.getElementById('paceInputGroup').style.display = 'block';
+            document.getElementById('speedUnitGroup').style.display = 'none';
+            document.getElementById('speedInputGroup').style.display = 'none';
+            document.getElementById('paceStatItem').style.display = 'flex';
+            document.getElementById('speedStatItem').style.display = 'none';
+            document.getElementById('inconsistencyLabel').textContent = 'Pace';
+            document.getElementById('inconsistencyHelpText').textContent = 'Constant pace throughout the run (most efficient)';
+            
+            // Update pace input range (3-15 min/km)
+            const paceInput = document.getElementById('paceInput');
+            const paceSlider = document.getElementById('paceSlider');
             paceInput.min = '3';
             paceInput.max = '15';
             paceSlider.min = '3';
@@ -421,11 +475,103 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
             }
         }
         
+        // Show/hide heart rate controls based on checkbox
+        updateHeartRateControls();
+        
         if (currentRoute) {
             updateRouteInfo(currentRoute);
             updateCharts(currentRoute);
         }
     });
+});
+
+// Update heart rate controls visibility
+function updateHeartRateControls() {
+    const includeHR = document.getElementById('includeHeartRate').checked;
+    document.getElementById('heartRateGroup').style.display = includeHR ? 'block' : 'none';
+    document.getElementById('heartRateVariabilityGroup').style.display = includeHR ? 'block' : 'none';
+}
+
+// Heart rate checkbox
+document.getElementById('includeHeartRate').addEventListener('change', function() {
+    updateHeartRateControls();
+});
+
+// Heart rate slider
+document.getElementById('heartRateSlider').addEventListener('input', function() {
+    const value = parseInt(this.value);
+    document.getElementById('heartRateValue').textContent = value;
+    updateHeartRateHelpText(value);
+});
+
+function updateHeartRateHelpText(hr) {
+    const helpText = document.getElementById('heartRateHelpText');
+    if (hr < 120) {
+        helpText.textContent = 'Light intensity, easy effort';
+    } else if (hr < 140) {
+        helpText.textContent = 'Moderate intensity, steady effort';
+    } else if (hr < 160) {
+        helpText.textContent = 'Moderate-high intensity, comfortable hard effort';
+    } else if (hr < 180) {
+        helpText.textContent = 'High intensity, vigorous effort';
+    } else {
+        helpText.textContent = 'Very high intensity, maximum effort';
+    }
+}
+
+// Heart rate variability slider
+document.getElementById('heartRateVariability').addEventListener('input', function() {
+    document.getElementById('heartRateVariabilityValue').textContent = this.value + '%';
+});
+
+// Speed unit change
+document.getElementById('speedUnit').addEventListener('change', function() {
+    const speedUnit = this.value;
+    document.getElementById('speedUnitLabel').textContent = speedUnit;
+    
+    const speedInput = document.getElementById('speedInput');
+    const speedSlider = document.getElementById('speedSlider');
+    let speed = parseFloat(speedInput.value) || 20;
+    
+    // Convert speed
+    if (speedUnit === 'mph') {
+        speed = speed * 0.621371; // Convert to mph
+    } else {
+        speed = speed / 0.621371; // Convert to km/h
+    }
+    
+    speedInput.value = speed.toFixed(2);
+    speedSlider.value = speed.toFixed(2);
+    document.getElementById('speedValue').textContent = speed.toFixed(2);
+    
+    if (currentRoute) {
+        updateRouteInfo(currentRoute);
+        updateCharts(currentRoute);
+    }
+});
+
+// Speed slider
+document.getElementById('speedSlider').addEventListener('input', function() {
+    const value = parseFloat(this.value);
+    document.getElementById('speedValue').textContent = value.toFixed(2);
+    document.getElementById('speedInput').value = value.toFixed(2);
+    
+    if (currentRoute) {
+        updateRouteInfo(currentRoute);
+        updateCharts(currentRoute);
+    }
+});
+
+// Speed input change
+document.getElementById('speedInput').addEventListener('input', function() {
+    const value = parseFloat(this.value) || 20;
+    document.getElementById('speedSlider').value = value;
+    document.getElementById('speedValue').textContent = value.toFixed(2);
+    
+    if (currentRoute) {
+        updateRouteInfo(currentRoute);
+        updateCharts(currentRoute);
+    }
 });
 
 // Pace unit change
@@ -574,13 +720,19 @@ function generateGPX(layer) {
         <time>${pointTime.toISOString()}</time>`;
         
         if (includeHeartRate) {
-            // Generate realistic heart rate (140-180 for running, 120-160 for biking)
-            const baseHR = currentActivityType === 'run' ? 160 : 140;
-            const hr = baseHR + Math.floor(Math.random() * 20) - 10;
+            // Get heart rate settings
+            const avgHeartRate = parseInt(document.getElementById('heartRateSlider').value) || 150;
+            const hrVariability = parseFloat(document.getElementById('heartRateVariability').value) || 10;
+            
+            // Calculate heart rate with variability
+            const hrVariation = (Math.random() - 0.5) * (hrVariability / 100) * avgHeartRate;
+            const hr = Math.round(avgHeartRate + hrVariation);
+            const clampedHR = Math.max(60, Math.min(220, hr)); // Clamp between 60-220 bpm
+            
             gpx += `
         <extensions>
           <gpxtpx:TrackPointExtension>
-            <gpxtpx:hr>${hr}</gpxtpx:hr>
+            <gpxtpx:hr>${clampedHR}</gpxtpx:hr>
           </gpxtpx:TrackPointExtension>
         </extensions>`;
         }
